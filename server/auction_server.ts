@@ -5,7 +5,9 @@ import * as express from 'express';
 import {Server} from 'ws';
 import * as path from "path";
 const app = express();
+
 app.use('/', express.static(path.join(__dirname, '..', 'client')));
+
 app.get('/api', (req, res) => {
     res.send("Hello Express");
 });
@@ -56,13 +58,16 @@ setInterval(() => {
         currentBids.set(p.id, newBid);
     });
     subscriptions.forEach((productIds: number[], ws) => {
-        if (ws.readyState === 1) {
-            let newBids = productIds.map(pid => ({
+        if(ws.readyState === 1) {
+            let newBids = productIds.map( pid => ({
                 productId: pid,
                 bid: currentBids.get(pid)
             }));
             ws.send(JSON.stringify(newBids));
+        }else{
+            subscriptions.delete(ws);
         }
+
     });
 }, 2000);
 

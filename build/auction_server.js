@@ -62,6 +62,9 @@ setInterval(function () {
             }); });
             ws.send(JSON.stringify(newBids));
         }
+        else {
+            subscriptions.delete(ws);
+        }
     });
 }, 2000);
 var Product = (function () {
