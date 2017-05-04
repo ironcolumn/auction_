@@ -76,13 +76,13 @@ var server = app.listen(8000, "localhost", function () {
 });
 var subscripitions = new Map();
 var wsServer = new ws_1.Server({ port: 8085 });
-wsServer.on("connection", function (WebSocket) {
-    WebSocket.send("这个消息是服务器主动推送的");
-    WebSocket.on('message', function (message) {
+wsServer.on("connection", function (websocket) {
+    websocket.send("这个消息是服务器主动推送的");
+    websocket.on('message', function (message) {
         var messageObj = JSON.parse(message);
         console.log("接收到消息:" + messageObj);
-        var productIds = subscripitions.get(WebSocket) || [];
-        subscripitions.set(WebSocket, productIds.concat([messageObj.productId]));
+        var productIds = subscripitions.get(websocket) || [];
+        subscripitions.set(websocket, productIds.concat([messageObj.productId]));
         console.log(productIds);
     });
 });
@@ -94,10 +94,12 @@ setInterval(function () {
         currentBids.set(p.id, newBid);
     });
     subscripitions.forEach(function (productIds, ws) {
-        var newBids = productIds.map(function (pid) { return ({
-            productId: pid,
-            bid: currentBids.get(pid)
-        }); });
-        ws.send(JSON.stringify(newBids));
+        if (ws.readyState === 1) {
+            var newBids = productIds.map(function (pid) { return ({
+                productId: pid,
+                bid: currentBids.get(pid)
+            }); });
+            ws.send(JSON.stringify(newBids));
+        }
     });
 }, 2000);

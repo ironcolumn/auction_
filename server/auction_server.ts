@@ -73,13 +73,13 @@ const server = app.listen(8000, "localhost", () => {
 });
 const subscripitions = new Map<any, number[]>();
 const wsServer = new Server({port: 8085});
-wsServer.on("connection", WebSocket => {
-    WebSocket.send("这个消息是服务器主动推送的");
-    WebSocket.on('message', message => {
+wsServer.on("connection", websocket => {
+    websocket.send("这个消息是服务器主动推送的");
+    websocket.on('message', message => {
         let messageObj = JSON.parse(message);
         console.log("接收到消息:" + messageObj)
-        let productIds = subscripitions.get(WebSocket) || [];
-        subscripitions.set(WebSocket, [...productIds, messageObj.productId]);
+        let productIds = subscripitions.get(websocket) || [];
+        subscripitions.set(websocket, [...productIds, messageObj.productId]);
         console.log(productIds)
     });
 });
@@ -91,11 +91,12 @@ setInterval(() => {
         currentBids.set(p.id, newBid);
     });
     subscripitions.forEach((productIds: number[], ws) => {
-        let newBids = productIds.map(pid => ({
-            productId: pid,
-            bid: currentBids.get(pid)
-        }));
-        ws.send(JSON.stringify(newBids));
-
+        if (ws.readyState === 1) {
+            let newBids = productIds.map(pid => ({
+                productId: pid,
+                bid: currentBids.get(pid)
+            }));
+            ws.send(JSON.stringify(newBids));
+        }
     });
 }, 2000);
