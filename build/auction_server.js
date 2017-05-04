@@ -1,20 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-/**
- * Created by Administrator on 2017/5/3.
- */
 var express = require("express");
-var ws_1 = require("ws");
 var path = require("path");
+var ws_1 = require("ws");
 var app = express();
 app.use('/', express.static(path.join(__dirname, '..', 'client')));
-app.get('/api', function (req, res) {
-    res.send("Hello Express");
-});
 app.get('/api/products', function (req, res) {
     var result = products;
     var params = req.query;
-    console.log(params);
     if (params.title) {
         result = result.filter(function (p) { return p.title.indexOf(params.title) !== -1; });
     }
@@ -33,18 +26,15 @@ app.get('/api/product/:id/comments', function (req, res) {
     res.json(comments.filter(function (comment) { return comment.productId == req.params.id; }));
 });
 var server = app.listen(8000, "localhost", function () {
-    console.log("服务器已启动,地址是:http://localhost:8000/");
+    console.log("服务器已启动，地址是: http://localhost:8000");
 });
 var subscriptions = new Map();
 var wsServer = new ws_1.Server({ port: 8085 });
 wsServer.on("connection", function (websocket) {
-    websocket.send("这个消息是服务器主动推送的");
     websocket.on('message', function (message) {
         var messageObj = JSON.parse(message);
-        console.log("接收到消息:" + messageObj);
         var productIds = subscriptions.get(websocket) || [];
         subscriptions.set(websocket, productIds.concat([messageObj.productId]));
-        console.log(productIds);
     });
 });
 var currentBids = new Map();
