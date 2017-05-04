@@ -2,6 +2,7 @@
  * Created by Administrator on 2017/5/3.
  */
 import * as express from 'express';
+import {Server} from 'ws';
 const app = express();
 export class Product {
     constructor(public id: number,
@@ -45,6 +46,7 @@ app.get('/api', (req, res) => {
 });
 app.get('/api/products', (req, res) => {
     let result = products;
+
     let params = req.query;
     console.log(params);
     if (params.title) {
@@ -53,11 +55,13 @@ app.get('/api/products', (req, res) => {
     if (params.price && result.length > 0) {
         result = result.filter((p) => p.price <= parseInt(params.price));
     }
-    if (params.category !== "-1" && result.length > 0) {
+    if (params.category && params.category !== "-1" && result.length > 0) {
         result = result.filter((p) => p.categories.indexOf(params.category) !== -1);
     }
+
     res.json(result);
-});
+})
+;
 app.get('/api/product/:id', (req, res) => {
     res.json(products.find((product) => product.id == req.params.id));
 });
@@ -67,3 +71,31 @@ app.get('/api/product/:id/comments', (req, res) => {
 const server = app.listen(8000, "localhost", () => {
     console.log("服务器已启动,地址是:http://localhost:8000/");
 });
+const subscripitions = new Map<any, number[]>();
+const wsServer = new Server({port: 8085});
+wsServer.on("connection", WebSocket => {
+    WebSocket.send("这个消息是服务器主动推送的");
+    WebSocket.on('message', message => {
+        let messageObj = JSON.parse(message);
+        console.log("接收到消息:" + messageObj)
+        let productIds = subscripitions.get(WebSocket) || [];
+        subscripitions.set(WebSocket, [...productIds, messageObj.productId]);
+        console.log(productIds)
+    });
+});
+const currentBids = new Map<number, number>();
+setInterval(() => {
+    products.forEach(p => {
+        let currentBid = currentBids.get(p.id) || p.price;
+        let newBid = currentBid + Math.random() * 5;
+        currentBids.set(p.id, newBid);
+    });
+    subscripitions.forEach((productIds: number[], ws) => {
+        let newBids = productIds.map(pid => ({
+            productId: pid,
+            bid: currentBids.get(pid)
+        }));
+        ws.send(JSON.stringify(newBids));
+
+    });
+}, 2000);

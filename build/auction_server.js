@@ -4,6 +4,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
  * Created by Administrator on 2017/5/3.
  */
 var express = require("express");
+var ws_1 = require("ws");
 var app = express();
 var Product = (function () {
     function Product(id, title, price, rating, desc, categories) {
@@ -59,7 +60,7 @@ app.get('/api/products', function (req, res) {
     if (params.price && result.length > 0) {
         result = result.filter(function (p) { return p.price <= parseInt(params.price); });
     }
-    if (params.category !== "-1" && result.length > 0) {
+    if (params.category && params.category !== "-1" && result.length > 0) {
         result = result.filter(function (p) { return p.categories.indexOf(params.category) !== -1; });
     }
     res.json(result);
@@ -73,3 +74,30 @@ app.get('/api/product/:id/comments', function (req, res) {
 var server = app.listen(8000, "localhost", function () {
     console.log("服务器已启动,地址是:http://localhost:8000/");
 });
+var subscripitions = new Map();
+var wsServer = new ws_1.Server({ port: 8085 });
+wsServer.on("connection", function (WebSocket) {
+    WebSocket.send("这个消息是服务器主动推送的");
+    WebSocket.on('message', function (message) {
+        var messageObj = JSON.parse(message);
+        console.log("接收到消息:" + messageObj);
+        var productIds = subscripitions.get(WebSocket) || [];
+        subscripitions.set(WebSocket, productIds.concat([messageObj.productId]));
+        console.log(productIds);
+    });
+});
+var currentBids = new Map();
+setInterval(function () {
+    products.forEach(function (p) {
+        var currentBid = currentBids.get(p.id) || p.price;
+        var newBid = currentBid + Math.random() * 5;
+        currentBids.set(p.id, newBid);
+    });
+    subscripitions.forEach(function (productIds, ws) {
+        var newBids = productIds.map(function (pid) { return ({
+            productId: pid,
+            bid: currentBids.get(pid)
+        }); });
+        ws.send(JSON.stringify(newBids));
+    });
+}, 2000);
